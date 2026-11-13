@@ -2,11 +2,15 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { initialMenuItems } from '../data/sampleMenu';
 import { initialOrders } from '../data/sampleOrders';
 import { menuScheduleService } from '../services/menuScheduleService';
+import { foodService } from '../services/foodService';
+import { weeklyMenuService } from '../services/weeklyMenuService';
+import { specialMenuService } from '../services/specialMenuService';
+import { currentMenuService } from '../services/currentMenuService';
 
 const OrderContext = createContext();
 
 export function OrderProvider({ children }) {
-  // 1. Food Catalog state
+  // 1. Food Catalog state (initialized with cache/mock for instantaneous first paint)
   const [menuItems, setMenuItems] = useState(() => {
     return menuScheduleService.getCatalog();
   });
@@ -22,7 +26,6 @@ export function OrderProvider({ children }) {
   });
 
   // 4. Development Date Simulator state (null = real system local time)
-  // Can be a weekday name e.g. "monday" or ISO date string "2026-11-16"
   const [simulatedDate, setSimulatedDate] = useState(() => {
     return localStorage.getItem('cb_simulated_date') || null;
   });
@@ -30,7 +33,10 @@ export function OrderProvider({ children }) {
   // Clock tick trigger to refresh menu automatically on date rollover or app refocus
   const [clockTick, setClockTick] = useState(0);
 
-  // 5. Orders state
+  // 5. Backend RPC Today Menu cache
+  const [backendTodayMenu, setBackendTodayMenu] = useState(null);
+
+  // 6. Orders state
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('cb_orders');
     return saved ? JSON.parse(saved) : initialOrders;
@@ -39,14 +45,11 @@ export function OrderProvider({ children }) {
   // Safety buffer for cooking summary
   const [cookingSafetyBuffer, setCookingSafetyBuffer] = useState(10); // percentage e.g. 10%
 
-  // Sync catalog changes
+  // Sync orders to localStorage
   useEffect(() => {
-    localStorage.setItem('cb_menu_items', JSON.stringify(menuItems));
-  }, [menuItems]);
-
-  // Sync orders
-  useEffect(() => {
-    localStorage.setItem('cb_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('cb_orders', JSON.stringify(orders));
+    } catch (_) {}
   }, [orders]);
 
   // Sync simulated date
@@ -58,7 +61,7 @@ export function OrderProvider({ children }) {
     }
   }, [simulatedDate]);
 
-  // Listen for window focus & visibility changes to automatically update date without page refresh
+  // Listen for window focus & visibility changes to automatically recheck date without page refresh
   useEffect(() => {
     const handleRecheck = () => {
       setClockTick(prev => prev + 1);
@@ -69,7 +72,6 @@ export function OrderProvider({ children }) {
       if (document.visibilityState === 'visible') handleRecheck();
     });
 
-    // Also check every 30 seconds for midnight rollover
     const interval = setInterval(handleRecheck, 30000);
 
     return () => {
@@ -78,72 +80,184 @@ export function OrderProvider({ children }) {
     };
   }, []);
 
-  // 6. Compute Effective Menu for Today (reactive to catalog, schedules, simulation & clock)
+  // Async load data from Supabase backend (Catalog, Weekly, Special, Today RPC)
+  const refreshBackendData = useCallback(async () => {
+    try {
+      const [catRes, weekRes, specRes, todayRes] = await Promise.all([
+        foodService.fetchCatalog({ includeInactive: true }),
+        weeklyMenuService.fetchWeeklySchedule(),
+        specialMenuService.fetchSpecialMenus(),
+        currentMenuService.fetchTodayMenu(simulatedDate)
+      ]);
+
+      if (catRes?.data) setMenuItems(catRes.data);
+      if (weekRes?.data) setWeeklySchedule(weekRes.data);
+      if (specRes?.data) setSpecialMenus(specRes.data);
+      if (todayRes?.success) setBackendTodayMenu(todayRes);
+    } catch (err) {
+      console.warn('[OrderContext] Backend sync notice:', err);
+    }
+  }, [simulatedDate]);
+
+  useEffect(() => {
+    refreshBackendData();
+
+    // Subscribe to Supabase Realtime changes
+    const unsubscribe = currentMenuService.subscribeToMenuUpdates(() => {
+      refreshBackendData();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [refreshBackendData, clockTick]);
+
+  // Compute Effective Menu for Today:
+  // Prefer backend RPC result when available; otherwise use seamless local fallback
   const effectiveMenu = useMemo(() => {
+    if (backendTodayMenu && backendTodayMenu.dishes) {
+      return backendTodayMenu;
+    }
+
     return menuScheduleService.getEffectiveMenu({
       catalog: menuItems,
       weeklySchedule,
       specialMenus,
       simulation: simulatedDate
     });
-  }, [menuItems, weeklySchedule, specialMenus, simulatedDate, clockTick]);
+  }, [backendTodayMenu, menuItems, weeklySchedule, specialMenus, simulatedDate, clockTick]);
 
-  // Schedule Management Actions:
-  const updateDaySchedule = useCallback((dayKey, dishIds) => {
-    setWeeklySchedule(prev => {
-      const updated = { ...prev, [dayKey]: dishIds };
-      menuScheduleService.saveWeeklySchedule(updated);
-      return updated;
-    });
-  }, []);
+  // Schedule Management Actions (Optimistic Local UI + Async Backend Sync):
+  const updateDaySchedule = useCallback(async (dayKey, dishIds) => {
+    setWeeklySchedule(prev => ({ ...prev, [dayKey]: dishIds }));
+    setBackendTodayMenu(null); // invalidate cached today menu to re-evaluate
+    await weeklyMenuService.saveDaySchedule(dayKey, dishIds);
+    refreshBackendData();
+  }, [refreshBackendData]);
 
-  const saveFullWeeklySchedule = useCallback((newSchedule) => {
-    menuScheduleService.saveWeeklySchedule(newSchedule);
+  const saveFullWeeklySchedule = useCallback(async (newSchedule) => {
     setWeeklySchedule(newSchedule);
-    return { success: true };
-  }, []);
+    setBackendTodayMenu(null);
+    const res = await weeklyMenuService.saveFullWeeklySchedule(newSchedule);
+    refreshBackendData();
+    return res;
+  }, [refreshBackendData]);
 
-  const copyDaySchedule = useCallback((fromDayKey, toDayKey) => {
+  const copyDaySchedule = useCallback(async (fromDayKey, toDayKey) => {
     setWeeklySchedule(prev => {
       const sourceDishes = prev[fromDayKey] || [];
       const updated = { ...prev, [toDayKey]: [...sourceDishes] };
-      menuScheduleService.saveWeeklySchedule(updated);
+      weeklyMenuService.saveDaySchedule(toDayKey, [...sourceDishes]);
       return updated;
     });
-  }, []);
+    setBackendTodayMenu(null);
+    setTimeout(() => refreshBackendData(), 100);
+  }, [refreshBackendData]);
 
-  const clearDaySchedule = useCallback((dayKey) => {
+  const clearDaySchedule = useCallback(async (dayKey) => {
+    setWeeklySchedule(prev => ({ ...prev, [dayKey]: [] }));
+    setBackendTodayMenu(null);
+    await weeklyMenuService.saveDaySchedule(dayKey, []);
+    refreshBackendData();
+  }, [refreshBackendData]);
+
+  const resetSchedules = useCallback(async () => {
+    const res = await weeklyMenuService.resetToDefaults();
+    await specialMenuService.fetchSpecialMenus();
+    setBackendTodayMenu(null);
+    refreshBackendData();
+    return res;
+  }, [refreshBackendData]);
+
+  const saveSpecialDateMenu = useCallback(async (dateStr, data) => {
+    setSpecialMenus(prev => ({
+      ...prev,
+      [dateStr]: {
+        dishIds: data.dishIds || [],
+        title: data.title || "Campus Canteen Special Menu",
+        badge: data.badge || "Special Menu",
+        notes: data.notes || ""
+      }
+    }));
+    setBackendTodayMenu(null);
+    const res = await specialMenuService.saveSpecialDateMenu(dateStr, data);
+    refreshBackendData();
+    return res;
+  }, [refreshBackendData]);
+
+  const deleteSpecialDateMenu = useCallback(async (dateStr) => {
+    setSpecialMenus(prev => {
+      const updated = { ...prev };
+      delete updated[dateStr];
+      return updated;
+    });
+    setBackendTodayMenu(null);
+    const res = await specialMenuService.deleteSpecialDateMenu(dateStr);
+    refreshBackendData();
+    return res;
+  }, [refreshBackendData]);
+
+  // Admin Menu Management actions (Catalog CRUD):
+  const addMenuItem = async (itemData) => {
+    const newItem = {
+      ...itemData,
+      id: `item-${Date.now()}`,
+      available: true,
+      stock: itemData.stock ? parseInt(itemData.stock, 10) : 30,
+      price: parseFloat(itemData.price),
+      rating: 5.0,
+      reviewsCount: 1,
+      isActive: true
+    };
+    setMenuItems(prev => [newItem, ...prev]);
+
+    const res = await foodService.createDish(newItem);
+    if (res?.data?.id) {
+      setMenuItems(prev => prev.map(i => i.id === newItem.id ? res.data : i));
+    }
+    refreshBackendData();
+    return res?.data || newItem;
+  };
+
+  const updateMenuItem = async (itemId, updates) => {
+    setMenuItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        return { ...item, ...updates };
+      }
+      return item;
+    }));
+    await foodService.updateDish(itemId, updates);
+    refreshBackendData();
+  };
+
+  const toggleItemAvailability = async (itemId) => {
+    let nextState = true;
+    setMenuItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        nextState = !item.available;
+        return { ...item, available: nextState, stock: nextState ? 25 : 0 };
+      }
+      return item;
+    }));
+    await foodService.toggleAvailability(itemId, nextState);
+    refreshBackendData();
+  };
+
+  const deleteMenuItem = async (itemId) => {
+    setMenuItems(prev => prev.filter(item => item.id !== itemId));
+    // Remove from weekly schedule
     setWeeklySchedule(prev => {
-      const updated = { ...prev, [dayKey]: [] };
-      menuScheduleService.saveWeeklySchedule(updated);
+      const updated = {};
+      Object.entries(prev).forEach(([day, ids]) => {
+        updated[day] = ids.filter(id => id !== itemId);
+      });
       return updated;
     });
-  }, []);
+    setBackendTodayMenu(null);
 
-  const resetSchedules = useCallback(() => {
-    const res = menuScheduleService.resetScheduleToDefault();
-    if (res.success) {
-      setWeeklySchedule(res.weeklySchedule);
-      setSpecialMenus(res.specialMenus);
-    }
-    return res;
-  }, []);
-
-  const saveSpecialDateMenu = useCallback((dateStr, data) => {
-    const res = menuScheduleService.saveSpecialDateSchedule(dateStr, data);
-    if (res.success) {
-      setSpecialMenus(res.specialMenus);
-    }
-    return res;
-  }, []);
-
-  const deleteSpecialDateMenu = useCallback((dateStr) => {
-    const res = menuScheduleService.deleteSpecialDateSchedule(dateStr);
-    if (res.success) {
-      setSpecialMenus(res.specialMenus);
-    }
-    return res;
-  }, []);
+    await foodService.deleteDish(itemId, true); // soft delete preserves past orders
+    refreshBackendData();
+  };
 
   // Place new order
   const placeOrder = ({ items, pickupSlot, paymentMethod, notes, studentInfo }) => {
@@ -254,53 +368,6 @@ export function OrderProvider({ children }) {
     }));
   };
 
-  // Admin Menu Management actions (Catalog CRUD)
-  const addMenuItem = (itemData) => {
-    const newItem = {
-      ...itemData,
-      id: `item-${Date.now()}`,
-      available: true,
-      stock: itemData.stock ? parseInt(itemData.stock, 10) : 30,
-      price: parseFloat(itemData.price),
-      rating: 5.0,
-      reviewsCount: 1
-    };
-    setMenuItems(prev => [newItem, ...prev]);
-    return newItem;
-  };
-
-  const updateMenuItem = (itemId, updates) => {
-    setMenuItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        return { ...item, ...updates };
-      }
-      return item;
-    }));
-  };
-
-  const toggleItemAvailability = (itemId) => {
-    setMenuItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        const nextState = !item.available;
-        return { ...item, available: nextState, stock: nextState ? 25 : 0 };
-      }
-      return item;
-    }));
-  };
-
-  const deleteMenuItem = (itemId) => {
-    setMenuItems(prev => prev.filter(item => item.id !== itemId));
-    // Also remove from all days in weekly schedule
-    setWeeklySchedule(prev => {
-      const updated = {};
-      Object.entries(prev).forEach(([day, ids]) => {
-        updated[day] = ids.filter(id => id !== itemId);
-      });
-      menuScheduleService.saveWeeklySchedule(updated);
-      return updated;
-    });
-  };
-
   // Cooking summary calculation
   const calculateCookingSummary = () => {
     const validOrders = orders.filter(o => 
@@ -368,7 +435,8 @@ export function OrderProvider({ children }) {
       updateMenuItem,
       toggleItemAvailability,
       deleteMenuItem,
-      calculateCookingSummary
+      calculateCookingSummary,
+      refreshBackendData
     }}>
       {children}
     </OrderContext.Provider>
