@@ -402,3 +402,4 @@ export default function PlasticBag3D({ phase = 'open', foodImage = null, quantit
     />
   );
 }
+
