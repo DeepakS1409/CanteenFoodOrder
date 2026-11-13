@@ -154,7 +154,7 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                 <>
                   <button
                     onClick={() => handleNav('admin-dashboard')}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                       currentRoute === 'admin-dashboard'
                         ? 'text-[#FF6B35] bg-white/5 font-bold'
                         : 'text-zinc-300 hover:text-white hover:bg-white/5'
@@ -163,8 +163,19 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                     Dashboard
                   </button>
                   <button
+                    onClick={() => handleNav('admin-schedule')}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                      currentRoute === 'admin-schedule'
+                        ? 'text-[#F59E0B] bg-white/5 font-bold'
+                        : 'text-zinc-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    <span>Menu Planner</span>
+                  </button>
+                  <button
                     onClick={() => handleNav('admin-orders')}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5 ${
                       currentRoute === 'admin-orders'
                         ? 'text-[#FF6B35] bg-white/5 font-bold'
                         : 'text-zinc-300 hover:text-white hover:bg-white/5'
@@ -179,7 +190,7 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                   </button>
                   <button
                     onClick={() => handleNav('admin-cooking')}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                       currentRoute === 'admin-cooking'
                         ? 'text-[#FF6B35] bg-white/5 font-bold'
                         : 'text-zinc-300 hover:text-white hover:bg-white/5'
@@ -189,13 +200,13 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                   </button>
                   <button
                     onClick={() => handleNav('admin-menu')}
-                    className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                       currentRoute === 'admin-menu'
                         ? 'text-[#FF6B35] bg-white/5 font-bold'
                         : 'text-zinc-300 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    Menu Management
+                    Catalog
                   </button>
                 </>
               )}
@@ -292,6 +303,12 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                   Dashboard
                 </button>
                 <button
+                  onClick={() => handleNav('admin-schedule')}
+                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-[#F59E0B] hover:bg-white/5"
+                >
+                  Weekly Menu Planner
+                </button>
+                <button
                   onClick={() => handleNav('admin-orders')}
                   className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
@@ -307,7 +324,7 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                   onClick={() => handleNav('admin-menu')}
                   className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
-                  Menu Management
+                  Food Catalog
                 </button>
               </>
             )}

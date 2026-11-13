@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Sparkles, Coffee, Utensils, Flame, CupSoda, Zap, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, Sparkles, Coffee, Utensils, Flame, CupSoda, Zap, CheckCircle2, Calendar } from 'lucide-react';
 import FoodItem from './FoodItem';
 import { foodCategories } from '../data/sampleMenu';
+import { useOrders } from '../context/OrderContext';
 
 const categoryIcons = {
   Sparkles: Sparkles,
@@ -14,6 +15,7 @@ const categoryIcons = {
 };
 
 export default function FoodCategories({ items = [] }) {
+  const { effectiveMenu } = useOrders();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [vegOnly, setVegOnly] = useState(false);
@@ -37,26 +39,40 @@ export default function FoodCategories({ items = [] }) {
 
   return (
     <section id="explore-menu" className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-      {/* Section Header */}
+      {/* Section Header with Day-wise Schedule Information */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-xs font-bold text-[#F59E0B] uppercase tracking-wider mb-2">
-            <Utensils className="w-3.5 h-3.5" />
-            <span>Campus Canteen Menu</span>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-xs font-bold text-[#F59E0B] uppercase tracking-wider">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{effectiveMenu.formattedDate}</span>
+            </div>
+
+            {effectiveMenu.isSpecialOverride && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF6B35]/20 border border-[#FF6B35]/40 text-xs font-black text-[#FF6B35] uppercase tracking-wider shadow-glow-secondary animate-pulse">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{effectiveMenu.specialInfo?.badge || 'Special Menu Override'}</span>
+              </span>
+            )}
           </div>
+
           <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-            Explore All Categories
+            Today's Scheduled Menu
           </h2>
           <p className="text-sm text-[#A1A1AA] mt-1 max-w-xl">
-            Order ahead to skip the crowd during 10-minute lecture breaks and lunch rush.
+            {effectiveMenu.isSpecialOverride 
+              ? `${effectiveMenu.specialInfo?.title} • Active priority menu for today.`
+              : `Automatically serving dishes scheduled for ${effectiveMenu.dayName}. Fresh on-order prep.`}
           </p>
         </div>
 
         {/* Quick Stats Pill */}
         <div className="flex items-center gap-3">
-          <div className="glass-panel px-4 py-2 rounded-xl flex items-center gap-2 text-xs text-[#A1A1AA]">
+          <div className="glass-panel px-4 py-2.5 rounded-xl flex items-center gap-2 text-xs text-[#A1A1AA]">
             <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
-            <span>Canteen Status: <strong className="text-white">Kitchen Open & Taking Orders</strong></span>
+            <span>
+              <strong>{items.length} dishes</strong> scheduled for today
+            </span>
           </div>
         </div>
       </div>
@@ -140,8 +156,16 @@ export default function FoodCategories({ items = [] }) {
         </div>
       </div>
 
-      {/* Menu Grid */}
-      {filteredItems.length > 0 ? (
+      {/* Menu Grid or Empty States */}
+      {items.length === 0 ? (
+        <div className="glass-panel rounded-3xl p-14 text-center max-w-lg mx-auto my-8 border border-white/10 space-y-3">
+          <Calendar className="w-14 h-14 text-zinc-600 mx-auto mb-2" />
+          <h3 className="text-xl font-bold text-white">No dishes scheduled today</h3>
+          <p className="text-xs text-[#A1A1AA] leading-relaxed max-w-sm mx-auto">
+            The canteen kitchen does not have any items on the active schedule for {effectiveMenu.dayName}. Please check back on the next operating weekday.
+          </p>
+        </div>
+      ) : filteredItems.length > 0 ? (
         <motion.div 
           layout
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
@@ -153,9 +177,9 @@ export default function FoodCategories({ items = [] }) {
       ) : (
         <div className="glass-panel rounded-2xl p-12 text-center max-w-md mx-auto my-8 border border-white/10">
           <Filter className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-white">No items found</h3>
+          <h3 className="text-lg font-bold text-white">No items match your filters</h3>
           <p className="text-xs text-[#A1A1AA] mt-1">
-            Try adjusting your search terms or clearing your filters to see more delicious campus canteen items.
+            Try adjusting your search terms or clearing your category filters to view today's available meals.
           </p>
           <button
             onClick={() => {
@@ -166,7 +190,7 @@ export default function FoodCategories({ items = [] }) {
             }}
             className="mt-4 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all"
           >
-            Reset All Filters
+            Reset Filters
           </button>
         </div>
       )}

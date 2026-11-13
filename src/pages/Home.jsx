@@ -19,10 +19,12 @@ import { useOrders } from '../context/OrderContext';
 import { useCart } from '../context/CartContext';
 
 export default function Home({ onRouteChange }) {
-  const { menuItems } = useOrders();
+  const { menuItems, effectiveMenu } = useOrders();
   const { addToCart, triggerPlasticPacking } = useCart();
 
-  const heroFeaturedItem = menuItems[0]; // The Quad Smash Burger
+  // Dishes scheduled specifically for today
+  const todayDishes = effectiveMenu?.dishes || [];
+  const heroFeaturedItem = todayDishes[0] || menuItems[0]; // fallback to first item if empty
 
   return (
     <div className="w-full bg-[#090909] text-white">
@@ -32,12 +34,16 @@ export default function Home({ onRouteChange }) {
           <div className="flex items-center gap-3 overflow-hidden text-xs">
             <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F59E0B] text-black font-extrabold uppercase text-[10px] tracking-wider shrink-0 shadow-sm">
               <BellRing className="w-3 h-3" />
-              <span>Today's Specials</span>
+              <span>{effectiveMenu.isSpecialOverride ? 'Special Override Menu' : "Today's Schedule"}</span>
             </span>
             <div className="text-zinc-200 truncate flex items-center gap-4">
-              <span>🔥 Chef's Smash Burger with Smoked Cheddar (Fresh Batch Ready)</span>
+              <span>📅 {effectiveMenu.formattedDate}</span>
               <span className="text-[#F59E0B]">•</span>
-              <span>⚡ Pre-order now to skip the 12:45 PM Break Rush!</span>
+              {effectiveMenu.isSpecialOverride ? (
+                <span className="text-[#FF6B35] font-bold">🌟 {effectiveMenu.specialInfo?.title} ({todayDishes.length} items active)</span>
+              ) : (
+                <span>⚡ Serving {effectiveMenu.dayName} Menu ({todayDishes.length} dishes scheduled)</span>
+              )}
               <span className="text-[#F59E0B]">•</span>
               <span>🎉 10% Student Discount automatically applied on orders above ₹300!</span>
             </div>
@@ -47,7 +53,7 @@ export default function Home({ onRouteChange }) {
             onClick={() => onRouteChange('menu')}
             className="hidden sm:flex items-center gap-1 text-xs text-[#F59E0B] font-bold hover:underline shrink-0"
           >
-            <span>View All Specials</span>
+            <span>View Today's Full Menu</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -223,7 +229,7 @@ export default function Home({ onRouteChange }) {
 
       {/* 3. Immersive 3D Food Showcase Section (Anchor link target) */}
       <div id="food-showcase-section">
-        <FoodShowcase items={menuItems} />
+        <FoodShowcase items={todayDishes} />
       </div>
 
       {/* 4. How CampusBite Works in 3 Quick Steps */}
@@ -277,7 +283,7 @@ export default function Home({ onRouteChange }) {
       </section>
 
       {/* 5. Food Categories Section */}
-      <FoodCategories items={menuItems} />
+      <FoodCategories items={todayDishes} />
     </div>
   );
 }

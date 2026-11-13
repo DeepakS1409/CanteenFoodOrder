@@ -57,13 +57,21 @@ export default function Dashboard({ onNavigateTab }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => onNavigateTab('schedule')}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#FF6B35] text-black font-extrabold text-xs shadow-glow-primary flex items-center gap-1.5 hover:opacity-95"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Weekly Menu Planner</span>
+          </button>
+
           <button
             onClick={() => onNavigateTab('cooking')}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#F59E0B] text-black font-extrabold text-xs shadow-glow-secondary flex items-center gap-2 hover:opacity-95"
+            className="px-4 py-2 rounded-xl bg-white/10 text-white font-extrabold text-xs flex items-center gap-2 hover:bg-white/15 border border-white/10"
           >
-            <Flame className="w-4 h-4" />
-            <span>Open Cooking Summary (KDS)</span>
+            <Flame className="w-4 h-4 text-[#FF6B35]" />
+            <span>Cooking Summary (KDS)</span>
           </button>
         </div>
       </div>

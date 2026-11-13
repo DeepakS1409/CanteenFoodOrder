@@ -1,17 +1,36 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { initialMenuItems } from '../data/sampleMenu';
 import { initialOrders } from '../data/sampleOrders';
+import { menuScheduleService } from '../services/menuScheduleService';
 
 const OrderContext = createContext();
 
 export function OrderProvider({ children }) {
-  // Menu items state
+  // 1. Food Catalog state
   const [menuItems, setMenuItems] = useState(() => {
-    const saved = localStorage.getItem('cb_menu_items');
-    return saved ? JSON.parse(saved) : initialMenuItems;
+    return menuScheduleService.getCatalog();
   });
 
-  // Orders state
+  // 2. Weekly Schedule state
+  const [weeklySchedule, setWeeklySchedule] = useState(() => {
+    return menuScheduleService.getWeeklySchedule();
+  });
+
+  // 3. Special Date Overrides state
+  const [specialMenus, setSpecialMenus] = useState(() => {
+    return menuScheduleService.getSpecialDateSchedules();
+  });
+
+  // 4. Development Date Simulator state (null = real system local time)
+  // Can be a weekday name e.g. "monday" or ISO date string "2026-11-16"
+  const [simulatedDate, setSimulatedDate] = useState(() => {
+    return localStorage.getItem('cb_simulated_date') || null;
+  });
+
+  // Clock tick trigger to refresh menu automatically on date rollover or app refocus
+  const [clockTick, setClockTick] = useState(0);
+
+  // 5. Orders state
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('cb_orders');
     return saved ? JSON.parse(saved) : initialOrders;
@@ -20,13 +39,111 @@ export function OrderProvider({ children }) {
   // Safety buffer for cooking summary
   const [cookingSafetyBuffer, setCookingSafetyBuffer] = useState(10); // percentage e.g. 10%
 
+  // Sync catalog changes
   useEffect(() => {
     localStorage.setItem('cb_menu_items', JSON.stringify(menuItems));
   }, [menuItems]);
 
+  // Sync orders
   useEffect(() => {
     localStorage.setItem('cb_orders', JSON.stringify(orders));
   }, [orders]);
+
+  // Sync simulated date
+  useEffect(() => {
+    if (simulatedDate) {
+      localStorage.setItem('cb_simulated_date', simulatedDate);
+    } else {
+      localStorage.removeItem('cb_simulated_date');
+    }
+  }, [simulatedDate]);
+
+  // Listen for window focus & visibility changes to automatically update date without page refresh
+  useEffect(() => {
+    const handleRecheck = () => {
+      setClockTick(prev => prev + 1);
+    };
+
+    window.addEventListener('focus', handleRecheck);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') handleRecheck();
+    });
+
+    // Also check every 30 seconds for midnight rollover
+    const interval = setInterval(handleRecheck, 30000);
+
+    return () => {
+      window.removeEventListener('focus', handleRecheck);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // 6. Compute Effective Menu for Today (reactive to catalog, schedules, simulation & clock)
+  const effectiveMenu = useMemo(() => {
+    return menuScheduleService.getEffectiveMenu({
+      catalog: menuItems,
+      weeklySchedule,
+      specialMenus,
+      simulation: simulatedDate
+    });
+  }, [menuItems, weeklySchedule, specialMenus, simulatedDate, clockTick]);
+
+  // Schedule Management Actions:
+  const updateDaySchedule = useCallback((dayKey, dishIds) => {
+    setWeeklySchedule(prev => {
+      const updated = { ...prev, [dayKey]: dishIds };
+      menuScheduleService.saveWeeklySchedule(updated);
+      return updated;
+    });
+  }, []);
+
+  const saveFullWeeklySchedule = useCallback((newSchedule) => {
+    menuScheduleService.saveWeeklySchedule(newSchedule);
+    setWeeklySchedule(newSchedule);
+    return { success: true };
+  }, []);
+
+  const copyDaySchedule = useCallback((fromDayKey, toDayKey) => {
+    setWeeklySchedule(prev => {
+      const sourceDishes = prev[fromDayKey] || [];
+      const updated = { ...prev, [toDayKey]: [...sourceDishes] };
+      menuScheduleService.saveWeeklySchedule(updated);
+      return updated;
+    });
+  }, []);
+
+  const clearDaySchedule = useCallback((dayKey) => {
+    setWeeklySchedule(prev => {
+      const updated = { ...prev, [dayKey]: [] };
+      menuScheduleService.saveWeeklySchedule(updated);
+      return updated;
+    });
+  }, []);
+
+  const resetSchedules = useCallback(() => {
+    const res = menuScheduleService.resetScheduleToDefault();
+    if (res.success) {
+      setWeeklySchedule(res.weeklySchedule);
+      setSpecialMenus(res.specialMenus);
+    }
+    return res;
+  }, []);
+
+  const saveSpecialDateMenu = useCallback((dateStr, data) => {
+    const res = menuScheduleService.saveSpecialDateSchedule(dateStr, data);
+    if (res.success) {
+      setSpecialMenus(res.specialMenus);
+    }
+    return res;
+  }, []);
+
+  const deleteSpecialDateMenu = useCallback((dateStr) => {
+    const res = menuScheduleService.deleteSpecialDateSchedule(dateStr);
+    if (res.success) {
+      setSpecialMenus(res.specialMenus);
+    }
+    return res;
+  }, []);
 
   // Place new order
   const placeOrder = ({ items, pickupSlot, paymentMethod, notes, studentInfo }) => {
@@ -52,7 +169,7 @@ export function OrderProvider({ children }) {
       })),
       totalAmount,
       pickupSlot: pickupSlot || "Immediate (Next 10 Mins)",
-      status: "Pending", // initial status
+      status: "Pending",
       paymentStatus: `Paid (${paymentMethod || 'UPI FastPay'})`,
       paymentMethod: paymentMethod || "UPI FastPay Demo",
       createdAt: new Date().toISOString(),
@@ -63,7 +180,7 @@ export function OrderProvider({ children }) {
 
     setOrders(prev => [newOrder, ...prev]);
 
-    // Also decrement stock if available
+    // Decrement stock if available
     setMenuItems(prev => prev.map(menuItem => {
       const ordered = items.find(i => i.id === menuItem.id);
       if (ordered) {
@@ -83,7 +200,6 @@ export function OrderProvider({ children }) {
       return { success: false, message: "Order not found." };
     }
 
-    // Cancellation check: Allow cancellation only when Pending or Accepted
     if (targetOrder.status === 'Cooking') {
       return {
         success: false,
@@ -105,7 +221,6 @@ export function OrderProvider({ children }) {
       };
     }
 
-    // If Pending or Accepted, allow cancellation
     setOrders(prev => prev.map(order => {
       if (order.id === orderId) {
         return {
@@ -139,7 +254,7 @@ export function OrderProvider({ children }) {
     }));
   };
 
-  // Admin Menu Management actions
+  // Admin Menu Management actions (Catalog CRUD)
   const addMenuItem = (itemData) => {
     const newItem = {
       ...itemData,
@@ -175,10 +290,18 @@ export function OrderProvider({ children }) {
 
   const deleteMenuItem = (itemId) => {
     setMenuItems(prev => prev.filter(item => item.id !== itemId));
+    // Also remove from all days in weekly schedule
+    setWeeklySchedule(prev => {
+      const updated = {};
+      Object.entries(prev).forEach(([day, ids]) => {
+        updated[day] = ids.filter(id => id !== itemId);
+      });
+      menuScheduleService.saveWeeklySchedule(updated);
+      return updated;
+    });
   };
 
   // Cooking summary calculation
-  // "Group all confirmed orders by food item... Calculate total quantity required... Allow optional configurable safety buffer... Cancelled, failed and unpaid orders must NOT be counted."
   const calculateCookingSummary = () => {
     const validOrders = orders.filter(o => 
       ['Accepted', 'Cooking', 'Ready for Pickup'].includes(o.status)
@@ -224,6 +347,18 @@ export function OrderProvider({ children }) {
     <OrderContext.Provider value={{
       menuItems,
       orders,
+      weeklySchedule,
+      specialMenus,
+      simulatedDate,
+      setSimulatedDate,
+      effectiveMenu,
+      updateDaySchedule,
+      saveFullWeeklySchedule,
+      copyDaySchedule,
+      clearDaySchedule,
+      resetSchedules,
+      saveSpecialDateMenu,
+      deleteSpecialDateMenu,
       cookingSafetyBuffer,
       setCookingSafetyBuffer,
       placeOrder,
@@ -245,4 +380,3 @@ export function useOrders() {
   if (!context) throw new Error('useOrders must be used within an OrderProvider');
   return context;
 }
-

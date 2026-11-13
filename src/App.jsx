@@ -26,6 +26,8 @@ import AdminDashboard from './admin/Dashboard';
 import IncomingOrders from './admin/IncomingOrders';
 import CookingSummary from './admin/CookingSummary';
 import MenuManagement from './admin/MenuManagement';
+import WeeklyMenuPlanner from './admin/WeeklyMenuPlanner';
+import SpecialDateMenu from './admin/SpecialDateMenu';
 import Analytics from './admin/Analytics';
 import AdminSettings from './admin/Settings';
 
@@ -90,6 +92,8 @@ function MainAppContent() {
           onExitAdmin={() => handleRouteChange('home')}
         >
           {adminTab === 'dashboard' && <AdminDashboard onNavigateTab={(tab) => setAdminTab(tab)} />}
+          {adminTab === 'schedule' && <WeeklyMenuPlanner onPreviewStudentMenu={() => handleRouteChange('menu')} />}
+          {adminTab === 'special-dates' && <SpecialDateMenu />}
           {adminTab === 'orders' && <IncomingOrders />}
           {adminTab === 'cooking' && <CookingSummary />}
           {adminTab === 'menu' && <MenuManagement />}

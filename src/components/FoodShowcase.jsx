@@ -182,6 +182,22 @@ export default function FoodShowcase({ items = [] }) {
     setTimeout(() => setIsAddedFeedback(false), 1400);
   };
 
+  if (showcaseItems.length === 0) {
+    return (
+      <section className="relative min-h-[35vh] w-full bg-[#090909] text-white flex items-center justify-center p-8 border-y border-white/5 select-none">
+        <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-white/10 text-center max-w-md space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#F59E0B]/20 flex items-center justify-center text-[#F59E0B] mx-auto">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <h3 className="text-xl font-bold text-white">No 3D Showcase Dishes Today</h3>
+          <p className="text-xs text-[#A1A1AA] leading-relaxed">
+            There are no dishes scheduled in the weekly menu planner for today.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section 
       ref={sectionRef}
