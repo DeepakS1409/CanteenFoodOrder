@@ -18,7 +18,7 @@ import { useOrders } from '../context/OrderContext';
 import DevDateSimulator from './DevDateSimulator';
 
 export default function AdminLayout({ activeTab, onTabChange, onExitAdmin, children }) {
-  const { adminProfile, switchRole } = useAuth();
+  const { adminProfile, switchRole, logout } = useAuth();
   const { orders } = useOrders();
 
   const pendingCount = orders.filter(o => o.status === 'Pending').length;
@@ -113,6 +113,17 @@ export default function AdminLayout({ activeTab, onTabChange, onExitAdmin, child
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Switch to Student App</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              await logout();
+              onExitAdmin();
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-semibold text-red-400 hover:text-red-300 border border-red-500/20 transition-all"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Staff Sign Out</span>
           </button>
         </div>
       </aside>

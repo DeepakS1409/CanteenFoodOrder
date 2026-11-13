@@ -220,3 +220,4 @@ export const weeklyMenuService = {
     return this.saveFullWeeklySchedule(DEFAULT_WEEKLY_SCHEDULE);
   }
 };
+

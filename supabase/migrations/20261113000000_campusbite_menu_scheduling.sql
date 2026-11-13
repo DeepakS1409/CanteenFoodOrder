@@ -351,3 +351,4 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_menu_schedule;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.special_date_menus;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.special_menu_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.food_catalog;
+

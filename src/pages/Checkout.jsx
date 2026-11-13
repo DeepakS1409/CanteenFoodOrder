@@ -17,9 +17,9 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 
-export default function Checkout({ onBackToMenu, onOrderPlaced }) {
+export default function Checkout({ onBackToMenu, onOrderPlaced, onNavigate }) {
   const { cartItems, subtotal, campusDiscount, packagingFee, totalAmount, clearCart } = useCart();
-  const { studentProfile } = useAuth();
+  const { studentProfile, isAuthenticated, loginWithEmail } = useAuth();
   const { placeOrder } = useOrders();
 
   // Form states
@@ -51,6 +51,14 @@ export default function Checkout({ onBackToMenu, onOrderPlaced }) {
 
   const handlePayNow = (e) => {
     e.preventDefault();
+
+    if (!isAuthenticated) {
+      if (onNavigate) {
+        onNavigate('login');
+      }
+      return;
+    }
+
     setIsProcessing(true);
 
     // Simulate swift, ultra-smooth demo payment

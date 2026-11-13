@@ -270,6 +270,7 @@ export function OrderProvider({ children }) {
     const newOrder = {
       id: newOrderId,
       token: tokenNumber,
+      userId: studentInfo?.id || null,
       studentName: studentInfo.name || "Alex Rivera",
       studentId: studentInfo.collegeId || "CB-2024-884",
       department: studentInfo.department || "Computer Science",
@@ -293,6 +294,28 @@ export function OrderProvider({ children }) {
     };
 
     setOrders(prev => [newOrder, ...prev]);
+
+    // Persist to Supabase orders table if configured
+    if (isSupabaseConfigured() && supabase) {
+      const isRealUuid = studentInfo?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentInfo.id);
+      supabase.from('orders').insert([{
+        id: newOrderId,
+        token: tokenNumber,
+        user_id: isRealUuid ? studentInfo.id : null,
+        student_name: newOrder.studentName,
+        student_id: newOrder.studentId,
+        department: newOrder.department,
+        year: newOrder.year,
+        total_amount: totalAmount,
+        pickup_slot: newOrder.pickupSlot,
+        status: "Pending",
+        payment_status: newOrder.paymentStatus,
+        payment_method: newOrder.paymentMethod,
+        prep_remaining_mins: 15,
+        qr_code_value: newOrder.qrCodeValue,
+        notes: newOrder.notes
+      }]).then(() => {});
+    }
 
     // Decrement stock if available
     setMenuItems(prev => prev.map(menuItem => {

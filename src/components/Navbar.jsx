@@ -10,7 +10,10 @@ import {
   X,
   Sparkles,
   ChevronDown,
-  ArrowRight
+  ArrowRight,
+  LogOut,
+  LogIn,
+  UserPlus
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -18,9 +21,10 @@ import { useOrders } from '../context/OrderContext';
 
 export default function Navbar({ currentRoute, onRouteChange }) {
   const { totalItemsCount, setIsCartOpen } = useCart();
-  const { role, switchRole, currentUser } = useAuth();
+  const { role, switchRole, currentUser, isAuthenticated, logout, isAdmin } = useAuth();
   const { orders } = useOrders();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   // Count active student orders
   const activeOrdersCount = orders.filter(o => 
@@ -30,11 +34,18 @@ export default function Navbar({ currentRoute, onRouteChange }) {
   const handleNav = (route) => {
     onRouteChange(route);
     setMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+    onRouteChange('home');
+    setIsUserMenuOpen(false);
   };
 
   return (
     <>
-      {/* Top Demo Role Switcher Bar */}
+      {/* Top Demo Role & Authentication Status Bar */}
       <div className="bg-[#141414] border-b border-white/5 py-1.5 px-4 text-xs select-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 text-zinc-400">
@@ -44,7 +55,7 @@ export default function Navbar({ currentRoute, onRouteChange }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-zinc-500 hidden md:inline">Viewing as:</span>
+            <span className="text-zinc-500 hidden md:inline">Active Mode:</span>
             <div className="flex items-center bg-[#090909] p-0.5 rounded-lg border border-white/10">
               <button
                 onClick={() => { switchRole('student'); onRouteChange('home'); }}
@@ -212,7 +223,7 @@ export default function Navbar({ currentRoute, onRouteChange }) {
               )}
             </nav>
 
-            {/* Right Action Icons: Cart & Profile */}
+            {/* Right Action Icons: Cart & Profile / Sign In */}
             <div className="flex items-center gap-3">
               {role === 'student' && (
                 <button
@@ -229,23 +240,91 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                 </button>
               )}
 
-              {/* User Avatar Capsule */}
-              <div 
-                onClick={() => handleNav(role === 'student' ? 'profile' : 'admin-dashboard')}
-                className="hidden sm:flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all"
-              >
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-7 h-7 rounded-lg object-cover border border-[#F59E0B]/40"
-                />
-                <div className="text-left">
-                  <span className="text-xs font-bold text-white block leading-tight">{currentUser.name}</span>
-                  <span className="text-[10px] text-zinc-400 block leading-none">
-                    {role === 'student' ? `Balance: ₹${currentUser.campusCardBalance}` : 'Kitchen Master'}
-                  </span>
+              {/* User Avatar Capsule or Sign In Buttons */}
+              {isAuthenticated ? (
+                <div className="relative">
+                  <div 
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all"
+                  >
+                    <img
+                      src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                      alt={currentUser?.name || 'User'}
+                      className="w-7 h-7 rounded-lg object-cover border border-[#F59E0B]/40"
+                    />
+                    <div className="text-left hidden sm:block">
+                      <span className="text-xs font-bold text-white block leading-tight">{currentUser?.name}</span>
+                      <span className="text-[10px] text-zinc-400 block leading-none">
+                        {role === 'student' ? (currentUser?.collegeId || `Balance: ₹${currentUser?.campusCardBalance || 850}`) : 'Canteen Staff'}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 hidden sm:block" />
+                  </div>
+
+                  {/* Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-[#141414] border border-white/15 shadow-2xl p-2 z-50 animate-fadeIn">
+                      <div className="px-3 py-2 border-b border-white/5 mb-1">
+                        <span className="text-xs font-bold text-white block truncate">{currentUser?.name}</span>
+                        <span className="text-[10px] text-zinc-400 block truncate">{currentUser?.email}</span>
+                      </div>
+
+                      {role === 'student' ? (
+                        <>
+                          <button
+                            onClick={() => handleNav('profile')}
+                            className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                          >
+                            <User className="w-3.5 h-3.5 text-[#F59E0B]" />
+                            <span>My Profile</span>
+                          </button>
+                          <button
+                            onClick={() => handleNav('my-orders')}
+                            className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-[#F59E0B]" />
+                            <span>My Orders</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleNav('admin-dashboard')}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#FF6B35]" />
+                          <span>Admin Dashboard</span>
+                        </button>
+                      )}
+
+                      <div className="border-t border-white/5 my-1" />
+
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleNav('login')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs border border-white/10 flex items-center gap-1.5 transition-all"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    <span>Sign In</span>
+                  </button>
+                  <button
+                    onClick={() => handleNav('register')}
+                    className="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#FF6B35] text-black font-extrabold text-xs shadow-glow-primary transition-all hover:opacity-95"
+                  >
+                    <span>Register</span>
+                  </button>
+                </div>
+              )}
 
               {/* Mobile hamburger menu button */}
               <button
@@ -259,26 +338,26 @@ export default function Navbar({ currentRoute, onRouteChange }) {
           </div>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* Mobile dropdown drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-[#141414] border-b border-white/10 px-4 pt-2 pb-6 space-y-2">
+          <div className="md:hidden border-t border-white/10 bg-[#090909] px-4 py-4 space-y-2">
             {role === 'student' ? (
               <>
                 <button
                   onClick={() => handleNav('home')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
                   Home
                 </button>
                 <button
                   onClick={() => handleNav('menu')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
                   Explore Menu
                 </button>
                 <button
                   onClick={() => handleNav('my-orders')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5 flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5 flex items-center justify-between"
                 >
                   <span>My Orders</span>
                   {activeOrdersCount > 0 && (
@@ -289,58 +368,59 @@ export default function Navbar({ currentRoute, onRouteChange }) {
                 </button>
                 <button
                   onClick={() => handleNav('profile')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
-                  Student Profile
+                  Profile
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => handleNav('admin-dashboard')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
-                  Dashboard
+                  Admin Dashboard
                 </button>
                 <button
                   onClick={() => handleNav('admin-schedule')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-[#F59E0B] hover:bg-white/5"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
-                  Weekly Menu Planner
+                  Menu Planner
                 </button>
                 <button
                   onClick={() => handleNav('admin-orders')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
+                  className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
                 >
                   Incoming Orders
-                </button>
-                <button
-                  onClick={() => handleNav('admin-cooking')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
-                >
-                  Cooking Summary
-                </button>
-                <button
-                  onClick={() => handleNav('admin-menu')}
-                  className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:bg-white/5"
-                >
-                  Food Catalog
                 </button>
               </>
             )}
 
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs text-zinc-400">Switch Demo Role:</span>
-              <button
-                onClick={() => {
-                  switchRole(role === 'student' ? 'admin' : 'student');
-                  onRouteChange(role === 'student' ? 'admin-dashboard' : 'home');
-                  setMobileMenuOpen(false);
-                }}
-                className="text-xs font-bold text-[#F59E0B] px-3 py-1.5 rounded-lg bg-white/5"
-              >
-                Switch to {role === 'student' ? 'Canteen Admin' : 'Student'}
-              </button>
+            <div className="border-t border-white/10 pt-3">
+              {isAuthenticated ? (
+                <button
+                  onClick={handleSignOut}
+                  className="w-full py-2.5 px-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-xs flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleNav('login')}
+                    className="py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs text-center"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => handleNav('register')}
+                    className="py-2.5 rounded-xl bg-[#F59E0B] text-black font-extrabold text-xs text-center"
+                  >
+                    Register
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -348,4 +428,3 @@ export default function Navbar({ currentRoute, onRouteChange }) {
     </>
   );
 }
-

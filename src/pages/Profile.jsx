@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { User, CreditCard, Award, Clock, Settings, Save, ShieldCheck, Mail, Phone, MapPin, Sparkles } from 'lucide-react';
+import { User, CreditCard, Award, Clock, Settings, Save, ShieldCheck, Mail, Phone, MapPin, Sparkles, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 
 export default function Profile({ onGoToOrders }) {
-  const { studentProfile, updateStudentProfile } = useAuth();
+  const { studentProfile, updateStudentProfile, logout } = useAuth();
   const { orders } = useOrders();
 
   const [name, setName] = useState(studentProfile.name);
@@ -161,6 +161,15 @@ export default function Profile({ onGoToOrders }) {
                 >
                   <Save className="w-4 h-4" />
                   <span>Update Profile</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs flex items-center justify-center gap-2 transition-all border border-red-500/20"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out of Campus Account</span>
                 </button>
               </form>
             </div>

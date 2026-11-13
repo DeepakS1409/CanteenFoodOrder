@@ -274,3 +274,19 @@ JOIN public.food_catalog fc ON fc.code = sid.dish_code
 ON CONFLICT (special_menu_id, food_id) DO UPDATE SET
     sort_order = EXCLUDED.sort_order,
     is_available = EXCLUDED.is_available;
+
+
+
+-- -----------------------------------------------------------------------------
+-- 4. SEED SAMPLE ACCOUNTS (OPTIONAL INSTRUCTIONS)
+-- -----------------------------------------------------------------------------
+-- In Supabase Auth, users are created via the Supabase Auth API or Dashboard.
+-- When a user registers with email 'canteen.head@campus.edu', grant them admin role:
+--
+-- INSERT INTO public.admin_profiles (id, email, name, role)
+-- SELECT id, email, 'Chef Vikram Rao', 'admin'
+-- FROM auth.users WHERE email = 'canteen.head@campus.edu'
+-- ON CONFLICT (id) DO UPDATE SET role = 'admin';
+--
+-- Similarly, a default student 'alex.rivera@campus.edu' with register number 'CB-2024-884'
+-- is automatically inserted into public.student_profiles via the on_auth_user_created trigger.

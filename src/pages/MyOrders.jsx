@@ -14,6 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useOrders } from '../context/OrderContext';
+import { useAuth } from '../context/AuthContext';
 
 const STATUS_STEPS = [
   { key: 'Pending', label: 'Order Placed', desc: 'Sent to canteen desk' },
@@ -25,9 +26,18 @@ const STATUS_STEPS = [
 
 export default function MyOrders({ onExploreMenu }) {
   const { orders, cancelOrder } = useOrders();
+  const { user, studentProfile, isAdmin } = useAuth();
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState("Change of lecture schedule");
   const [feedbackMessage, setFeedbackMessage] = useState(null);
+
+  // Filter orders: student can only view their own orders
+  const displayOrders = orders.filter(o => {
+    if (isAdmin) return true;
+    if (user && o.userId === user.id) return true;
+    if (studentProfile && (o.studentId === studentProfile.collegeId || o.studentName === studentProfile.name)) return true;
+    return false;
+  });
 
   const handleCancelSubmit = (e) => {
     e.preventDefault();
@@ -95,9 +105,9 @@ export default function MyOrders({ onExploreMenu }) {
         </AnimatePresence>
 
         {/* Orders Listing */}
-        {orders.length > 0 ? (
+        {displayOrders.length > 0 ? (
           <div className="space-y-6">
-            {orders.map((order) => {
+            {displayOrders.map((order) => {
               const currentStep = getStepIndex(order.status);
               const isCancelled = order.status === 'Cancelled';
               const isCooking = order.status === 'Cooking';

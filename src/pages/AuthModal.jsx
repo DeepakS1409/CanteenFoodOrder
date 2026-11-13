@@ -1,19 +1,27 @@
 import React, { useState } from 'react';
-import { X, User, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
+import { X, User, ShieldCheck, ArrowRight, Sparkles, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export default function AuthModal({ isOpen, onClose }) {
-  const { switchRole, role } = useAuth();
+export default function AuthModal({ isOpen, onClose, onNavigate }) {
+  const { switchRole, role, loginWithEmail } = useAuth();
   const [activeTab, setActiveTab] = useState('student'); // 'student' | 'admin'
-  const [studentId, setStudentId] = useState('CB-2024-884');
-  const [pin, setPin] = useState('••••');
 
   if (!isOpen) return null;
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    switchRole(activeTab);
+  const handleQuickDemoLogin = async (targetRole) => {
+    if (targetRole === 'admin') {
+      await loginWithEmail({ email: 'canteen.head@campus.edu', password: 'admin123' });
+      if (onNavigate) onNavigate('admin-dashboard');
+    } else {
+      await loginWithEmail({ email: 'alex.rivera@campus.edu', password: 'student123' });
+      if (onNavigate) onNavigate('home');
+    }
     onClose();
+  };
+
+  const goToRoute = (route) => {
+    onClose();
+    if (onNavigate) onNavigate(route);
   };
 
   return (
@@ -36,85 +44,55 @@ export default function AuthModal({ isOpen, onClose }) {
             </div>
           </div>
           <h2 className="text-2xl font-black text-white">CampusBite Portal</h2>
-          <p className="text-xs text-[#A1A1AA] mt-1">Select your campus role to explore features</p>
+          <p className="text-xs text-[#A1A1AA] mt-1">Select an authentication option</p>
         </div>
 
-        {/* Role Switcher Pill */}
-        <div className="grid grid-cols-2 p-1 rounded-2xl bg-[#141414] border border-white/10 mb-6">
+        {/* Action Buttons */}
+        <div className="space-y-3">
           <button
-            type="button"
-            onClick={() => setActiveTab('student')}
-            className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'student'
-                ? 'bg-[#F59E0B] text-black shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
+            onClick={() => goToRoute('login')}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#FF6B35] text-black font-extrabold text-sm flex items-center justify-center gap-2 shadow-glow-primary hover:opacity-95 transition-all"
           >
-            <User className="w-3.5 h-3.5" />
-            <span>Student Login</span>
+            <LogIn className="w-4 h-4" />
+            <span>Sign In (Email or Register No.)</span>
           </button>
 
           <button
-            type="button"
-            onClick={() => setActiveTab('admin')}
-            className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'admin'
-                ? 'bg-[#FF6B35] text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white'
-            }`}
+            onClick={() => goToRoute('register')}
+            className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all"
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Canteen Staff</span>
+            <UserPlus className="w-4 h-4 text-[#F59E0B]" />
+            <span>Register New Student Account</span>
           </button>
         </div>
 
-        {/* Quick Demo Form */}
-        <form onSubmit={handleLogin} className="space-y-4 text-xs">
-          <div>
-            <label className="text-zinc-300 block mb-1 font-semibold">
-              {activeTab === 'student' ? 'College Roll / Student ID' : 'Staff Admin ID'}
-            </label>
-            <input
-              type="text"
-              value={activeTab === 'student' ? studentId : 'STAFF-CANTEEN-01'}
-              readOnly
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/10 text-white font-mono"
-            />
-          </div>
+        {/* Quick Demo Shortcuts */}
+        <div className="mt-6 pt-5 border-t border-white/10">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 text-center">
+            One-Click Demo Access
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuickDemoLogin('student')}
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-200 flex items-center justify-center gap-1.5 transition-all"
+            >
+              <User className="w-3.5 h-3.5 text-[#F59E0B]" />
+              <span>Demo Student</span>
+            </button>
 
-          <div>
-            <label className="text-zinc-300 block mb-1 font-semibold">Campus PIN</label>
-            <input
-              type="password"
-              value={pin}
-              readOnly
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/10 text-white font-mono tracking-widest"
-            />
+            <button
+              type="button"
+              onClick={() => handleQuickDemoLogin('admin')}
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-200 flex items-center justify-center gap-1.5 transition-all"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#FF6B35]" />
+              <span>Canteen Admin</span>
+            </button>
           </div>
-
-          <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-[11px] text-zinc-400">
-            {activeTab === 'student' ? (
-              <span><strong>Sample Profile:</strong> Alex Rivera, CS Dept, 3rd Year. Meal Balance: ₹850.</span>
-            ) : (
-              <span><strong>Sample Profile:</strong> Chef Vikram Rao, Head of Canteen Operations & Kitchen Display.</span>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            className={`w-full py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'student'
-                ? 'bg-[#F59E0B] text-black hover:bg-[#FF6B35] shadow-glow-primary'
-                : 'bg-[#FF6B35] text-white hover:opacity-90 shadow-glow-secondary'
-            }`}
-          >
-            <span>Continue as {activeTab === 'student' ? 'Student' : 'Staff Admin'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </form>
+        </div>
 
       </div>
     </div>
   );
 }
-

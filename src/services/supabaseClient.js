@@ -35,3 +35,4 @@ if (!isSupabaseConfigured()) {
     'color: #A1A1AA;'
   );
 }
+
