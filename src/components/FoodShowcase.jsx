@@ -10,7 +10,7 @@ export default function FoodShowcase({ items = [] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAddedFeedback, setIsAddedFeedback] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, triggerPlasticPacking } = useCart();
   const containerRef = useRef(null);
 
   const currentItem = showcaseItems[activeIndex] || showcaseItems[0];
@@ -51,7 +51,8 @@ export default function FoodShowcase({ items = [] }) {
 
   const handleAddToCart = (e) => {
     if (!currentItem || !currentItem.available) return;
-    addToCart(currentItem, quantity, e);
+    // Signature Realistic 3D Plastic Carry Bag Packing Interaction
+    triggerPlasticPacking(currentItem, quantity, e);
     setIsAddedFeedback(true);
     setTimeout(() => setIsAddedFeedback(false), 1400);
   };

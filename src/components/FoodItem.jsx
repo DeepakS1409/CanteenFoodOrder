@@ -6,11 +6,11 @@ import { useCart } from '../context/CartContext';
 export default function FoodItem({ item }) {
   const [quantity, setQuantity] = useState(1);
   const [isAddedFeedback, setIsAddedFeedback] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, triggerPlasticPacking } = useCart();
 
   const handleAddToCart = (e) => {
     if (!item.available) return;
-    addToCart(item, quantity, e);
+    triggerPlasticPacking(item, quantity, e);
     setIsAddedFeedback(true);
     setTimeout(() => setIsAddedFeedback(false), 1200);
   };

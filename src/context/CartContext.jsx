@@ -10,10 +10,18 @@ export function CartProvider({ children }) {
 
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Flying item animation state
+  // Flying item animation state (for standard small quick add)
   const [flyingItem, setFlyingItem] = useState(null); // { id, image, startX, startY }
 
-  // Food packing animation overlay state
+  // 3D Realistic Plastic Carry Bag Packing Modal State
+  const [packingModalState, setPackingModalState] = useState({
+    isOpen: false,
+    item: null,
+    quantity: 1,
+    startPos: { x: 0, y: 0 }
+  });
+
+  // Food packing animation overlay state (for checkout)
   const [isPackingAnimationActive, setIsPackingAnimationActive] = useState(false);
   const [packingCompleteCallback, setPackingCompleteCallback] = useState(null);
 
@@ -21,8 +29,54 @@ export function CartProvider({ children }) {
     localStorage.setItem('cb_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
+  // Core add to cart logic (preserves item, quantity, options)
+  const addItemsInternal = (item, quantity = 1) => {
+    setCartItems(prev => {
+      const existing = prev.find(i => i.id === item.id);
+      if (existing) {
+        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i);
+      }
+      return [...prev, { ...item, quantity }];
+    });
+  };
+
+  // Trigger Realistic 3D Plastic Carry Bag Packing Animation on "Order Now"
+  const triggerPlasticPacking = (item, quantity = 1, clickEvent = null) => {
+    // 1. Immediately ensure item is added to cart without delay
+    addItemsInternal(item, quantity);
+
+    // 2. Extract starting coordinates from click event or center
+    let startX = typeof window !== 'undefined' ? window.innerWidth / 2 : 200;
+    let startY = typeof window !== 'undefined' ? window.innerHeight - 150 : 400;
+
+    if (clickEvent) {
+      if (clickEvent.currentTarget && typeof clickEvent.currentTarget.getBoundingClientRect === 'function') {
+        const rect = clickEvent.currentTarget.getBoundingClientRect();
+        startX = rect.left + rect.width / 2;
+        startY = rect.top + rect.height / 2;
+      } else if (clickEvent.clientX && clickEvent.clientY) {
+        startX = clickEvent.clientX;
+        startY = clickEvent.clientY;
+      }
+    }
+
+    // 3. Open realistic 3D plastic bag packing modal
+    setPackingModalState({
+      isOpen: true,
+      item,
+      quantity,
+      startPos: { x: startX, y: startY }
+    });
+  };
+
+  const closePackingModal = () => {
+    setPackingModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
   // Add to cart with optional click coordinates for flying animation
   const addToCart = (item, quantity = 1, clickEvent = null) => {
+    addItemsInternal(item, quantity);
+
     // If click event provided, trigger fly animation
     if (clickEvent) {
       const rect = clickEvent.currentTarget?.getBoundingClientRect?.() || {
@@ -45,14 +99,6 @@ export function CartProvider({ children }) {
         setFlyingItem(null);
       }, 850);
     }
-
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i);
-      }
-      return [...prev, { ...item, quantity }];
-    });
   };
 
   const updateQuantity = (id, newQty) => {
@@ -96,6 +142,9 @@ export function CartProvider({ children }) {
     <CartContext.Provider value={{
       cartItems,
       addToCart,
+      triggerPlasticPacking,
+      packingModalState,
+      closePackingModal,
       updateQuantity,
       removeFromCart,
       clearCart,
@@ -121,4 +170,3 @@ export function useCart() {
   if (!context) throw new Error('useCart must be used within a CartProvider');
   return context;
 }
-

@@ -54,3 +54,4 @@ CampusBite is a dark-themed, 3D-driven food ordering platform designed for colle
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+

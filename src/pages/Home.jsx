@@ -20,7 +20,7 @@ import { useCart } from '../context/CartContext';
 
 export default function Home({ onRouteChange }) {
   const { menuItems } = useOrders();
-  const { addToCart } = useCart();
+  const { addToCart, triggerPlasticPacking } = useCart();
 
   const heroFeaturedItem = menuItems[0]; // The Quad Smash Burger
 
@@ -205,7 +205,7 @@ export default function Home({ onRouteChange }) {
                       <div className="text-base font-black text-white">₹{heroFeaturedItem.price}</div>
                     </div>
                     <button
-                      onClick={(e) => addToCart(heroFeaturedItem, 1, e)}
+                      onClick={(e) => triggerPlasticPacking(heroFeaturedItem, 1, e)}
                       className="px-3 py-1.5 rounded-xl bg-[#F59E0B] text-black font-black text-xs hover:bg-[#FF6B35] transition-all flex items-center gap-1 shadow-sm"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />

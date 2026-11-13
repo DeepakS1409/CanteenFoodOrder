@@ -9,6 +9,7 @@ import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
 import FlyToCartOverlay from './components/FlyToCartOverlay';
 import PackingAnimation from './components/PackingAnimation';
+import PlasticPackingModal from './components/PlasticPackingModal';
 
 // Student Pages
 import Home from './pages/Home';
@@ -63,6 +64,9 @@ function MainAppContent() {
       
       {/* Universal Floating Flying Food Animation Overlay */}
       <FlyToCartOverlay />
+
+      {/* Signature Realistic 3D Plastic Carry Bag Packing Modal */}
+      <PlasticPackingModal />
 
       {/* Special Takeaway Bag Packing Animation Overlay */}
       <PackingAnimation />
